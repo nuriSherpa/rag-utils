@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "rag-utils: Local Code Context",
+  "version": "0.1.0",
+  "description": "Automatically attaches relevant code context from your local rag-utils index to messages sent to AI chat assistants.",
+  "permissions": ["storage", "activeTab"],
+  "host_permissions": ["http://localhost:3301/*"],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://claude.ai/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

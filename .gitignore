@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# rag-utils local index (per-project, never shared)
+.rag-utils/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Env files
+.env
+.env.local
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+# Test coverage
+coverage/

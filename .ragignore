@@ -1,0 +1,14 @@
+# .ragignore
+#
+# Same syntax as .gitignore. Use this to keep rag-utils from indexing
+# files that are technically tracked by git but aren't useful as
+# "code context" for an AI assistant (generated files, fixtures, etc).
+#
+# .gitignore is always respected automatically - you only need to
+# list EXTRA exclusions here.
+
+# Example exclusions:
+# *.generated.ts
+# **/__fixtures__/**
+# **/*.snap
+# docs/
