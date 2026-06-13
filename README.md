@@ -14,19 +14,19 @@ Everything runs on your machine. No code is uploaded anywhere.
 
 This repo is being built incrementally, file by file. Current state:
 
-| File | Status |
-| --- | --- |
-| `src/crawler/ignorer.ts` | done |
-| `src/crawler/fileCrawler.ts` | done |
-| `src/crawler/functionParser.ts` | skeleton (tree-sitter wired, AST walk TODO) |
-| `src/crawler/fileWatcher.ts` | skeleton (diffing logic in place, needs testing) |
-| `src/rag/vectorStore.ts` | skeleton (SQLite schema + cosine search) |
-| `src/rag/embedder.ts` | skeleton (transformers.js wired) |
-| `src/rag/retriever.ts` | skeleton |
-| `src/server/server.ts`, `routes.ts` | skeleton |
-| `bin/rag.ts` | skeleton (`init` / `serve` / `query` / `watch`) |
-| `src/extension/*` | not started |
-| `src/utils/*` | done |
+| File                                | Status                                           |
+| ----------------------------------- | ------------------------------------------------ |
+| `src/crawler/ignorer.ts`            | done                                             |
+| `src/crawler/fileCrawler.ts`        | done                                             |
+| `src/crawler/functionParser.ts`     | skeleton (tree-sitter wired, AST walk TODO)      |
+| `src/crawler/fileWatcher.ts`        | skeleton (diffing logic in place, needs testing) |
+| `src/rag/vectorStore.ts`            | skeleton (SQLite schema + cosine search)         |
+| `src/rag/embedder.ts`               | skeleton (transformers.js wired)                 |
+| `src/rag/retriever.ts`              | skeleton                                         |
+| `src/server/server.ts`, `routes.ts` | skeleton                                         |
+| `bin/rag.ts`                        | skeleton (`init` / `serve` / `query` / `watch`)  |
+| `src/extension/*`                   | not started                                      |
+| `src/utils/*`                       | done                                             |
 
 ## Architecture
 
@@ -114,111 +114,6 @@ You type "why is login failing" into Claude.ai
 - npm (or pnpm/yarn if you prefer — examples below use npm)
 - Git
 - Google Chrome (for the extension, once it's built)
-
-## Getting started
-
-### 1. Create the GitHub repo
-
-Pick one of these:
-
-**Using the GitHub web UI**
-1. Go to <https://github.com/new>
-2. Repository name: `rag-utils`
-3. Leave "Initialize with README" **unchecked** (we already have one)
-4. Create the repo, then copy the URL it gives you, e.g.
-   `https://github.com/<your-username>/rag-utils.git`
-
-**Using the GitHub CLI** (if you have `gh` installed)
-```bash
-gh repo create rag-utils --private --source=. --remote=origin
-```
-
-### 2. Set up the project locally
-
-```bash
-mkdir rag-utils
-cd rag-utils
-git init
-git branch -M main
-git remote add origin https://github.com/<your-username>/rag-utils.git
-```
-
-### 3. Add the base files
-
-Unzip/copy the project files generated for you into this folder, so it
-matches the structure above (`package.json`, `tsconfig.json`, `bin/`,
-`src/`, `.gitignore`, `.ragignore`, `LICENSE`, `README.md`).
-
-### 4. Install dependencies
-
-```bash
-npm install
-```
-
-> Note: `better-sqlite3` and `tree-sitter` / `tree-sitter-typescript` compile
-> native bindings on install. If you hit build errors, make sure you have
-> Python 3 and a C++ toolchain available (on macOS: Xcode Command Line
-> Tools; on Linux: `build-essential`).
-
-### 5. Commit and push the base files
-
-```bash
-git add .
-git commit -m "Initial scaffold: TS config, types, utils, skeleton modules"
-git push -u origin main
-```
-
-### 6. Verify the build
-
-```bash
-npm run build   # compiles src/ + bin/ to dist/
-npm run dev     # runs bin/rag.ts directly via tsx, for fast iteration
-```
-
-## CLI commands (target shape)
-
-```bash
-rag init             # one-time: crawl, parse, embed, persist
-rag serve            # start localhost:3301 + live file watcher
-rag serve --port 4000
-rag query "why is login failing"
-rag watch            # watcher only, no server (debugging)
-```
-
-## Suggested build order
-
-This mirrors the dependency graph — lower-level modules first, CLI wiring
-last:
-
-1. `src/utils/*` — done
-2. `src/crawler/ignorer.ts` — done
-3. `src/crawler/fileCrawler.ts` — done
-4. `src/crawler/functionParser.ts` — **next**: implement the tree-sitter
-   AST walk and name-resolution heuristics
-5. `src/rag/vectorStore.ts` — finalize schema once real FunctionRecords
-   are flowing through
-6. `src/rag/embedder.ts` — verify model download + batch embedding works
-7. `src/crawler/fileWatcher.ts` — wire up against a real project
-8. `src/rag/retriever.ts`, `src/server/*` — connect query -> results
-9. `bin/rag.ts` — end-to-end CLI smoke test
-10. `src/extension/*` — Chrome extension last
-
-## Configuration
-
-| File | Purpose |
-| --- | --- |
-| `.gitignore` | standard — also keeps `.rag-utils/` and `dist/` out of git |
-| `.ragignore` | extra exclusions *on top of* `.gitignore` for the indexer (e.g. fixtures, generated code, docs) |
-
-## Daily workflow once the scaffold is pushed
-
-```bash
-git pull
-# ... ask Claude to implement the next file from "Suggested build order" ...
-git add .
-git commit -m "Implement functionParser AST walk"
-git push
-```
 
 ## License
 
