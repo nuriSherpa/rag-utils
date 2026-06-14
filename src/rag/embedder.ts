@@ -1,7 +1,7 @@
-import { pipeline, type FeatureExtractionPipeline } from "@xenova/transformers";
-import { logger } from "../utils/logger.js";
+import { pipeline, type FeatureExtractionPipeline } from '@xenova/transformers';
+import { logger } from '../utils/logger.js';
 
-const MODEL_NAME = "Xenova/all-MiniLM-L6-v2";
+const MODEL_NAME = 'Xenova/bge-small-en-v1.5';
 
 /**
  * Wraps a local sentence-embedding model (all-MiniLM-L6-v2, 384 dims)
@@ -23,7 +23,7 @@ export class Embedder {
       return;
     }
     logger.debug(`Loading embedding model: ${MODEL_NAME}`);
-    this.pipe = await pipeline("feature-extraction", MODEL_NAME);
+    this.pipe = await pipeline('feature-extraction', MODEL_NAME);
   }
 
   /** Embeds a single string, returning a normalized 384-dim vector. */
@@ -42,11 +42,11 @@ export class Embedder {
       await this.init();
     }
     if (!this.pipe) {
-      throw new Error("Embedder failed to initialize.");
+      throw new Error('Embedder failed to initialize.');
     }
 
     const output = await this.pipe(texts, {
-      pooling: "mean",
+      pooling: 'mean',
       normalize: true,
     });
 

@@ -1,46 +1,30 @@
-import { readFileSync } from "node:fs";
-import { extname, relative } from "node:path";
-import Parser from "tree-sitter";
-import JavaScript from "tree-sitter-javascript";
-import TypeScript from "tree-sitter-typescript";
-import { sha256 } from "../utils/hash.js";
-import type { FunctionRecord, SupportedLanguage } from "../types.js";
+import { readFileSync } from 'node:fs';
+import { extname, relative } from 'node:path';
+import Parser from 'tree-sitter';
+import JavaScript from 'tree-sitter-javascript';
+import TypeScript from 'tree-sitter-typescript';
+import { sha256 } from '../utils/hash.js';
+import type { FunctionRecord, SupportedLanguage } from '../types.js';
 
 /** Maps file extensions to the tree-sitter grammar + our SupportedLanguage label. */
 const LANGUAGE_BY_EXT: Record<string, { grammar: unknown; language: SupportedLanguage }> = {
-  ".js": { grammar: JavaScript, language: "javascript" },
-  ".mjs": { grammar: JavaScript, language: "javascript" },
-  ".cjs": { grammar: JavaScript, language: "javascript" },
-  ".jsx": { grammar: JavaScript, language: "jsx" },
-  ".ts": { grammar: TypeScript.typescript, language: "typescript" },
-  ".tsx": { grammar: TypeScript.tsx, language: "tsx" },
+  '.js': { grammar: JavaScript, language: 'javascript' },
+  '.mjs': { grammar: JavaScript, language: 'javascript' },
+  '.cjs': { grammar: JavaScript, language: 'javascript' },
+  '.jsx': { grammar: JavaScript, language: 'jsx' },
+  '.ts': { grammar: TypeScript.typescript, language: 'typescript' },
+  '.tsx': { grammar: TypeScript.tsx, language: 'tsx' },
 };
 
 /** AST node types we treat as "a function worth indexing". */
 const FUNCTION_NODE_TYPES = new Set([
-  "function_declaration",
-  "function_expression",
-  "arrow_function",
-  "method_definition",
-  "generator_function_declaration",
+  'function_declaration',
+  'function_expression',
+  'arrow_function',
+  'method_definition',
+  'generator_function_declaration',
 ]);
 
-/**
- * Parses a single source file with tree-sitter and extracts one
- * FunctionRecord per top-level/method-level function found.
- *
- * Design notes for the implementation pass:
- * - `projectRoot` is used so FunctionRecord.filePath is repo-relative
- *   (stable across machines, good for display in the extension).
- * - We walk the tree once with `cursor`-based traversal (faster than
- *   recursive `node.children` access for large files).
- * - For `arrow_function` / `function_expression`, the "name" usually
- *   comes from the *parent* node (e.g. a variable_declarator or
- *   assignment_expression's left-hand side, or an object property key
- *   for `{ foo: () => {} }`). Fall back to "<anonymous>" otherwise.
- * - `record.code` is the exact source slice for [startLine, endLine],
- *   used both for embedding and for display in the extension.
- */
 export class FunctionParser {
   private readonly projectRoot: string;
   private readonly parsers: Map<SupportedLanguage, Parser>;
@@ -59,54 +43,161 @@ export class FunctionParser {
     }
   }
 
-  /**
-   * Parses `absFilePath` and returns one FunctionRecord per function
-   * found in the file. Returns an empty array for unsupported
-   * extensions or files that fail to parse.
-   */
   parseFile(absFilePath: string): FunctionRecord[] {
     const ext = extname(absFilePath);
     const config = LANGUAGE_BY_EXT[ext];
-    if (!config) {
-      return [];
-    }
+    if (!config) return [];
 
     const parser = this.parsers.get(config.language);
-    if (!parser) {
+    if (!parser) return [];
+
+    let source: string;
+    try {
+      source = readFileSync(absFilePath, 'utf8');
+    } catch {
       return [];
     }
 
-    const source = readFileSync(absFilePath, "utf8");
     const tree = parser.parse(source);
-    const relPath = relative(this.projectRoot, absFilePath).split("\\").join("/");
+    const relPath = relative(this.projectRoot, absFilePath).split('\\').join('/');
 
     return this.extractFunctions(tree.rootNode, source, relPath, config.language);
   }
 
-  /**
-   * Walks the AST and builds a FunctionRecord for every node whose
-   * type is in FUNCTION_NODE_TYPES.
-   *
-   * TODO (next implementation pass):
-   *  1. Use a TreeCursor to walk the whole tree.
-   *  2. For each FUNCTION_NODE_TYPES match, resolve a human-readable
-   *     name (see class doc above for the naming heuristics).
-   *  3. Slice `source` from node.startIndex to node.endIndex for `code`.
-   *  4. Build the FunctionRecord (id = `${relPath}::${name}::${startLine}`,
-   *     hash = sha256(code)).
-   *  5. Skip nodes nested inside another function we've already recorded
-   *     (or decide deliberately to include nested helpers - TBD).
-   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private extractFunctions(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    _rootNode: any,
-    _source: string,
-    _relPath: string,
-    _language: SupportedLanguage,
+    rootNode: any,
+    source: string,
+    relPath: string,
+    language: SupportedLanguage,
   ): FunctionRecord[] {
-    // Placeholder until the AST walk is implemented.
-    void FUNCTION_NODE_TYPES;
-    void sha256;
-    return [];
+    const records: FunctionRecord[] = [];
+    // Track byte ranges of functions already recorded so we can skip
+    // functions nested inside them.
+    const recordedRanges: Array<{ start: number; end: number }> = [];
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const walk = (node: any) => {
+      if (FUNCTION_NODE_TYPES.has(node.type)) {
+        // Skip if this node is nested inside an already-recorded function.
+        const isNested = recordedRanges.some(
+          (r) => node.startIndex >= r.start && node.endIndex <= r.end,
+        );
+
+        if (!isNested) {
+          const record = this.buildRecord(node, source, relPath, language);
+          if (record) {
+            records.push(record);
+            recordedRanges.push({ start: node.startIndex, end: node.endIndex });
+          }
+        }
+      }
+
+      // Always recurse into children so we reach top-level arrow functions
+      // assigned to variables, exported functions, class methods, etc.
+      for (let i = 0; i < node.childCount; i++) {
+        walk(node.child(i));
+      }
+    };
+
+    walk(rootNode);
+    return records;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private buildRecord(
+    node: any,
+    source: string,
+    relPath: string,
+    language: SupportedLanguage,
+  ): FunctionRecord | null {
+    const code = source.slice(node.startIndex, node.endIndex);
+    if (!code.trim()) return null;
+
+    const startLine = node.startPosition.row + 1; // 1-based
+    const endLine = node.endPosition.row + 1;
+    const name = this.resolveName(node) ?? '<anonymous>';
+    const id = `${relPath}::${name}::${startLine}`;
+
+    return {
+      id,
+      name,
+      filePath: relPath,
+      startLine,
+      endLine,
+      code,
+      language,
+      hash: sha256(code),
+    };
+  }
+
+  /**
+   * Resolves a human-readable name for a function node.
+   *
+   * Naming heuristics (in priority order):
+   *  1. `function_declaration` / `generator_function_declaration`: use the
+   *     `name` child node directly (e.g. `function foo()` → "foo").
+   *  2. `method_definition`: use the `name` child (e.g. `class Foo { bar() }` → "bar").
+   *  3. `function_expression` / `arrow_function` assigned via
+   *     `variable_declarator` (e.g. `const foo = () => {}`): use the
+   *     declarator's `name` child.
+   *  4. Object property / pair (e.g. `{ foo: function() {} }`): use the
+   *     property key.
+   *  5. `assignment_expression` LHS (e.g. `module.exports.foo = () => {}`):
+   *     use the last identifier on the left-hand side.
+   *  6. Fall back to "<anonymous>".
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private resolveName(node: any): string | null {
+    // 1 & 2: nodes that carry their name as a direct child
+    if (
+      node.type === 'function_declaration' ||
+      node.type === 'generator_function_declaration' ||
+      node.type === 'method_definition'
+    ) {
+      const nameNode = node.childForFieldName('name');
+      return nameNode?.text ?? null;
+    }
+
+    // For expressions we have to look at the parent
+    const parent = node.parent;
+    if (!parent) return null;
+
+    // 3: const/let/var foo = () => {} or const foo = function() {}
+    if (parent.type === 'variable_declarator') {
+      const nameNode = parent.childForFieldName('name');
+      return nameNode?.text ?? null;
+    }
+
+    // 4a: { foo: () => {} }  — tree-sitter calls this "pair"
+    if (parent.type === 'pair') {
+      const key = parent.childForFieldName('key');
+      return key?.text ?? null;
+    }
+
+    // 4b: shorthand method in object { foo() {} } — "method_definition" already
+    //     handled above, but some grammars use "property" with a value
+    if (parent.type === 'property') {
+      const key = parent.childForFieldName('key') ?? parent.child(0);
+      return key?.text ?? null;
+    }
+
+    // 5: module.exports.foo = () => {}
+    if (parent.type === 'assignment_expression') {
+      const lhs = parent.childForFieldName('left');
+      if (lhs) {
+        // Take the last identifier in the chain (e.g. "foo" from "module.exports.foo")
+        const text = lhs.text;
+        const parts = text.split('.');
+        return parts[parts.length - 1] ?? null;
+      }
+    }
+
+    // 6: export default function() {}  — parent is export_statement
+    if (parent.type === 'export_statement') {
+      return '<default>';
+    }
+
+    return null;
   }
 }

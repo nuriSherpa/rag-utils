@@ -1,16 +1,49 @@
 {
   "manifest_version": 3,
   "name": "rag-utils: Local Code Context",
-  "version": "0.1.0",
-  "description": "Automatically attaches relevant code context from your local rag-utils index to messages sent to AI chat assistants.",
+  "version": "0.3.1",
+  "description": "Shows relevant local code context inside AI chatbots. Click copy, then paste into your message.",
   "permissions": ["storage", "activeTab"],
-  "host_permissions": ["http://localhost:3301/*"],
+  "host_permissions": [
+    "http://localhost:3301/*",
+    "https://claude.ai/*",
+    "https://chatgpt.com/*",
+    "https://chat.openai.com/*",
+    "https://gemini.google.com/*",
+    "https://aistudio.google.com/*",
+    "https://github.com/copilot*",
+    "https://perplexity.ai/*",
+    "https://phind.com/*",
+    "https://you.com/*",
+    "https://huggingface.co/chat/*",
+    "https://poe.com/*",
+    "https://chat.deepseek.com/*",
+    "https://chat.mistral.ai/*",
+    "https://kimi.com/*",
+    "https://kimi.moonshot.cn/*"
+  ],
   "action": {
     "default_popup": "popup.html"
   },
   "content_scripts": [
     {
-      "matches": ["https://claude.ai/*"],
+      "matches": [
+        "https://claude.ai/*",
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*",
+        "https://gemini.google.com/*",
+        "https://aistudio.google.com/*",
+        "https://github.com/copilot*",
+        "https://perplexity.ai/*",
+        "https://phind.com/*",
+        "https://you.com/*",
+        "https://huggingface.co/chat/*",
+        "https://poe.com/*",
+        "https://chat.deepseek.com/*",
+        "https://chat.mistral.ai/*",
+        "https://kimi.com/*",
+        "https://kimi.moonshot.cn/*"
+      ],
       "js": ["content.js"],
       "run_at": "document_idle"
     }
