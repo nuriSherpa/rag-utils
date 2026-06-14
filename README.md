@@ -75,7 +75,7 @@ You type "processUser is throwing TypeError" in Claude.ai
 ### Step 1: Clone the repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/rag-utils.git
+git clone https://github.com/nuriSherpa/rag-utils.git
 cd rag-utils
 ```
 
